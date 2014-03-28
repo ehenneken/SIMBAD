@@ -3,7 +3,7 @@
 Methods implemented in this module:
 - doPositionQuery()
 
-For 'soPositionQuery' method:
+For 'doPositionQuery' method:
 Given a set of input parameters, the client sends a query
 to the specified SIMBAD server. If the query is executed
 successfully, the result will return Python list of SIMBAD
@@ -38,7 +38,7 @@ B. For coordinate query:
 
 Example:
 
-    >>> from ads.SIMBAD import Client as Client
+    >>> from SIMBAD_utils import Client as Client
     >>> SimbadClient = Client(URL="http://simbad.u-strasbg.fr",debug=1)
     >>> SimbadClient.pstring = "05 23 34.6 -69 45 22:0.16667"
     >>> SimbadClient.doPositionQuery()
