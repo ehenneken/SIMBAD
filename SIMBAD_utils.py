@@ -2,6 +2,7 @@
 
 Methods implemented in this module:
 - doPositionQuery()
+- doObjectQuery()
 
 For 'doPositionQuery' method:
 Given a set of input parameters, the client sends a query
@@ -35,6 +36,9 @@ B. For coordinate query:
                     Valid values are: ICRS, FK4, FK5, GAL, SGAL, ECL
 - 'equinox'         parameter to change the default 'equinox' (2006.7)
 - 'epoch'           paramater to change the default 'epoch' (J2000)
+
+C. For object query:
+- 'obect_names'      Object names to get SIMBAD identifier for
 
 Example:
 
@@ -79,7 +83,8 @@ class Client:
         self.object   = ''
         self.result   = ''
         self.script   = ''
-        self.qFormats = { 'posquery':'%IDLIST(1)'}
+        self.qFormats = { 'posquery':'%IDLIST(1)',
+                          'objquery':'%IDLIST(1)'}
         self.stime    = time.time()
 
     def doPositionQuery(self):
@@ -185,6 +190,57 @@ class Client:
         # How long did this all take?
         self.duration = time.time() - self.stime
 
+    def doObjectQuery(self):
+        '''
+        Query SIMBAD with a object name(s)
+        '''
+        objects = []
+        # This parameter will define what information we will get back
+        self.qType = 'objquery'
+        # The 'script' variable will hold the script to be sent to SIMBAD
+        self.script = ''
+        # The list 'elements' will hold the various elements used to generate
+        # the script
+        self.elements = []
+        # Set the script header if we don't have it yet
+        if len(self.elements) == 0:
+            self.__setscriptheader()
+        # By now we at least need to have a script header
+        if len(self.elements) == 0:
+            raise NoQueryElementsError
+        # Parse the position string
+        if self.ostring:
+            # We are expecting a comma-separated string of objects
+            objects = self.ostring.split(',')
+        # With a list of object names, we can do our query. Yell if the format is wrong!
+        if len(objects) >0:
+            obj_query = '\n'.join(objects)
+            # Add the coordinate query to the elements used to form the script
+            self.elements.append(obj_query)
+        else:
+            self.result = ''
+            raise IncorrectInputError
+        # Form the script from its constituting elements
+        self.script = "\n".join(self.elements)
+        # Time to do the actual position query
+        self.result = self.__doQuery()
+        # Check if we got an error back
+        if re.search(':error:',self.result):
+            if self.debug:
+                sys.stderr.write("Returned result:\n%s\n"%self.result)
+            self.error = filter(lambda a: len(a) > 0 and a!='XXX',
+                             self.result.split('\n'))
+            self.error = " ".join(filter(lambda a: not re.search(':::',a),
+                                  self.error))
+        # If no error was thrown, we should have results. The object IDs returned will
+        # be put in a list
+        if not self.error:
+            self.result = filter(lambda a: len(a) > 0 and a!='XXX',
+                                 self.result.split('\n'))
+            self.result = map(lambda c: c[1], filter(lambda b: len(b) == 2, map(lambda a: a.split(),self.result)))
+        # How long did this all take?
+        self.duration = time.time() - self.stime
+
     def __setscriptheader(self):
         '''
         Set the script header for the SIMBAD query. See
@@ -230,6 +286,15 @@ if __name__ == '__main__':
 #    SimbadClient.pstring = "05 23 34.6 -69 45 22:0 10"
     SimbadClient.pstring = "05 23 34.6 -69 45 22:0.16667"
     SimbadClient.doPositionQuery()
+    if not SimbadClient.error:
+        print SimbadClient.result
+    else:
+        print SimbadClient.error
+
+    print "Duration: %s seconds" % SimbadClient.duration
+    
+    SimbadClient.ostring = "M31,M101,TW Hydrae"
+    SimbadClient.doObjectQuery()
     if not SimbadClient.error:
         print SimbadClient.result
     else:
