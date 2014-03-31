@@ -51,6 +51,7 @@ Example:
 import re
 import sys
 import time
+import requests
 
 class NoQueryElementsError(Exception):
     pass
@@ -79,7 +80,8 @@ class Client:
         self.frame    = ''
         self.frames   = ['ICRS','FK4','FK5','GAL','SGAL','ECL']
         self.error    = ''
-        self.__preamble = 'simbad/sim-script?submit=submit+script&script='
+#        self.__preamble = 'simbad/sim-script?submit=submit+script&script='
+        self.__preamble = 'simbad/sim-script'
         self.object   = ''
         self.result   = ''
         self.script   = ''
@@ -259,23 +261,20 @@ class Client:
         '''
         Do the actual position query
         '''
-        import urllib
-        import urllib2
-        # The query URL consists of the preamble and script
-        queryURL   = "%s/%s%s" % (self.baseURL,self.__preamble,
-                                  urllib.quote(self.script))
+        params = {}
+        params['submit'] = 'submit script'
+        params['script'] = self.script
+        queryURL = "%s/%s" % (self.baseURL,self.__preamble)
+        # Do the query, using a proxy if so specified
+        r = requests.get(queryURL, params=params, proxies=self.proxees)
+        if r.status_code != requests.codes.ok:
+            sys.stderr.write('Error while querying SIMBAD. Aborting...\n')
+            return
         # Print the query being sent if debugging is on
         if self.debug:
-            sys.stderr.write("Query URL: %s\n"%queryURL)
-        # Do the query, using a proxy if so specified
-        try:
-            b=urllib.urlopen(queryURL,proxies=self.proxees)
-        except urllib2.HTTPError, e:
-            sys.stderr.write("%d: %s" % (e.code,e.msg))
-            return
-        # Gather the results and send them back
-        buffer = b.read().strip()
-        return buffer
+            sys.stderr.write("Query URL: " + r.url + "\n")
+
+        return r.text
 
 if __name__ == '__main__':
 
